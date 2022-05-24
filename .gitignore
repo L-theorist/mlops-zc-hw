@@ -1,0 +1,9 @@
+etc/
+lib/
+bin/
+share/
+.ipynb_checkpoints/
+lib64/
+lib64
+pyvenv.cfg
+data
