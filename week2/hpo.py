@@ -31,7 +31,7 @@ def run(data_path, num_trials):
         rmse = mean_squared_error(y_valid, y_pred, squared=False)
 
         mlflow.log_params(params)
-        mlflow.log_param("rmse_valid", rmse)
+        mlflow.log_metric("rmse", rmse)
         mlflow.end_run()
         return {'loss': rmse, 'status': STATUS_OK}
 
