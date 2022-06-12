@@ -1,4 +1,3 @@
-#from xmlrpc.client import _datetime_type
 import pandas as pd
 
 from sklearn.feature_extraction import DictVectorizer
@@ -8,7 +7,11 @@ from sklearn.metrics import mean_squared_error
 from prefect import flow, task, get_run_logger
 from prefect.task_runners import SequentialTaskRunner
 
-import datetime, os
+from prefect.deployments import DeploymentSpec
+from prefect.orion.schemas.schedules import CronSchedule
+from prefect.flow_runners import SubprocessFlowRunner
+
+import datetime, os, pickle
 from dateutil.relativedelta import relativedelta
 
 
@@ -22,8 +25,8 @@ def get_paths(date):
     date_train  = datetime.datetime.strftime(date - relativedelta(months=2), '%Y-%m')
     date_val = datetime.datetime.strftime(date - relativedelta(months=1), '%Y-%m')
 
-    train_path = f"./data/fhv_tripdata_{date_train}.parquet"
-    val_path = f"./data/fhv_tripdata_{date_val}.parquet"
+    train_path = f"../data/fhv_tripdata_{date_train}.parquet"
+    val_path = f"../data/fhv_tripdata_{date_val}.parquet"
     
     if not os.path.exists(train_path):
         logger.info(f"File {train_path} does not exist.")
@@ -84,8 +87,7 @@ def run_model(df, categorical, dv, lr):
     return
 
 @flow(task_runner=SequentialTaskRunner())
-# def main(train_path: str = './data/fhv_tripdata_2021-01.parquet', 
-#            val_path: str = './data/fhv_tripdata_2021-02.parquet'):
+
 def main(date=None):
     train_path, val_path = get_paths(date).result()
     categorical = ['PUlocationID', 'DOlocationID']
@@ -99,5 +101,25 @@ def main(date=None):
     # train the model
     lr, dv = train_model(df_train_processed, categorical).result()
     run_model(df_val_processed, categorical, dv, lr)
+    
+    if date == None:
+        date = datetime.datetime.strftime(datetime.datetime.today(), '%Y-%m-%d')
+    with open(f"model-{date}.bin", "wb") as f_out:
+         pickle.dump(lr, f_out)
+    with open(f"dv-{date}.b", "wb") as f_out:
+         pickle.dump(dv, f_out)
 
-main(date="2021-08-15")
+
+
+DeploymentSpec(
+        flow=main,
+        parameters={'date': "2021-08-15"},
+        name="model_training",
+        schedule=CronSchedule(cron="0 9 15 * *", timezone='Europe/Berlin', day_or=False), 
+        flow_runner=SubprocessFlowRunner(),
+        tags=["Q5"]
+)
+
+
+
+#main(date="2021-03-15")
