@@ -10,6 +10,7 @@ pyarrow = "*"
 fastparquet = "*"
 setuptools = "*"
 pip = "*"
+boto3 = "*"
 
 [dev-packages]
 

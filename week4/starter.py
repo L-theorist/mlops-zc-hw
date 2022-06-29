@@ -1,11 +1,15 @@
 
-import pickle, argparse
+import pickle, argparse, os, boto3
+from re import A
 import pandas as pd
 
 
 with open('model.bin', 'rb') as f_in:
     dv, lr = pickle.load(f_in)
 
+
+s3_bucket_name = 'mlops-zc-hw'
+session = boto3.Session()
 
 
 categorical = ['PUlocationID', 'DOlocationID']
@@ -76,3 +80,19 @@ df_result.to_parquet(
     index=False
 )
 
+s3 = session.resource('s3')
+
+with open(output_file, 'rb') as file:
+        result = s3.meta.client.put_object(
+            Bucket=s3_bucket_name,
+            Key=output_file,
+            Body=file
+        )
+
+
+res = result.get('ResponseMetadata')
+
+if res.get('HTTPStatusCode') == 200:
+    print(f'File {output_file} uploaded successfully to s3://{s3_bucket_name}')
+else:
+    print(f'File {output_file} not uploaded')
